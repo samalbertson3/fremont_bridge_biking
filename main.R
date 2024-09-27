@@ -51,5 +51,12 @@ df$total_diff <- predict(m_diff, newdata=df, type="response")
 out <- influence(m, obs=TRUE)
 df$cooks_distance <- cooks.distance(out)
 
+# output model predictions
+df_pred <- expand.grid(hour = 0:23,
+                       weekday = 0:1,
+                       temp_air_a = seq(45, 95, 5))
+df_pred$total <- predict(m, newdata=df_pred, type="response")
+df_pred$total_diff<- predict(m_diff, newdata=df_pred, type="response")
 
 openxlsx::write.xlsx(df, here::here("kids_on_bikes.xlsx"))
+openxlsx::write.xlsx(df_pred, here::here("preds_on_bikes.xlsx"))
