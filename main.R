@@ -37,7 +37,7 @@ df <- left_join(df_b, df_w, by="date") %>%
 # Model -------------------------------------------------------------------
 
 # Expected total bikes 
-m <- glmer(total ~ (1|hour) + weekday + temp_air_a, data = df, family=poisson)
+m <- glmer(total ~ (1|hour) + weekday + poly(temp_air_a, 3), data = df, family=poisson)
 df$total_pred <- predict(m, newdata=df, type="response")
 
 
@@ -50,11 +50,13 @@ df$total_diff <- predict(m_diff, newdata=df, type="response")
 # Calculate leverage
 out <- influence(m, obs=TRUE)
 df$cooks_distance <- cooks.distance(out)
+df$index <- 1:nrow(df)
 
 # output model predictions
 df_pred <- expand.grid(hour = 0:23,
                        weekday = 0:1,
-                       temp_air_a = seq(45, 95, 5))
+                       temp_air = seq(45, 95, 5)) %>%
+  mutate(temp_air_a = temp_air - mean(df$temp_air))
 df_pred$total <- predict(m, newdata=df_pred, type="response")
 df_pred$total_diff<- predict(m_diff, newdata=df_pred, type="response")
 
