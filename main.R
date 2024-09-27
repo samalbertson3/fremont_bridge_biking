@@ -3,6 +3,7 @@
 
 library(tidyverse)
 library(lubridate)
+library(lme4)
 
 
 # Data Processing ---------------------------------------------------------
@@ -22,10 +23,20 @@ df_b <- read.csv(here::here("Fremont_Bridge_Bicycle_Counter_20240926.csv")) %>%
 names(df_b) <- c("Date", "total", "northbound", "southbound", "date")
 
 df <- left_join(df_b, df_w, by="date") %>%
-  subset(!is.na(temp_surf) & !is.na(temp_air))
-
-openxlsx::write.xlsx(df, here::here("kids_on_bikes.xlsx"))
+  subset(!is.na(temp_surf) & !is.na(temp_air)) %>%
+  mutate(day_of_week = factor(weekdays(date),
+                              levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")),
+         temp_surf_m = mean(temp_surf),
+         temp_air_m = mean(temp_air),
+         temp_surf_a = temp_surf - temp_surf_m,
+         temp_air_a = temp_air - temp_air_m,
+         hour = factor(hour(date),levels=0:24),
+         weekday = ifelse(day_of_week %in% c("Saturday", "Sunday"), 0, 1))
 
 # Model -------------------------------------------------------------------
 
+m <- lm(total ~ (1|hour) + weekday + temp_air_a, data = df)
 
+df$pred <- predict(m, newdata=df, type="response")
+
+openxlsx::write.xlsx(df, here::here("kids_on_bikes.xlsx"))
