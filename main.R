@@ -31,12 +31,25 @@ df <- left_join(df_b, df_w, by="date") %>%
          temp_surf_a = temp_surf - temp_surf_m,
          temp_air_a = temp_air - temp_air_m,
          hour = factor(hour(date),levels=0:24),
-         weekday = ifelse(day_of_week %in% c("Saturday", "Sunday"), 0, 1))
+         weekday = ifelse(day_of_week %in% c("Saturday", "Sunday"), 0, 1),
+         diff = southbound - northbound)
 
 # Model -------------------------------------------------------------------
 
-m <- lm(total ~ (1|hour) + weekday + temp_air_a, data = df)
+# Expected total bikes 
+m <- glmer(total ~ (1|hour) + weekday + temp_air_a, data = df, family=poisson)
+df$total_pred <- predict(m, newdata=df, type="response")
 
-df$pred <- predict(m, newdata=df, type="response")
+
+# Expected difference between north/soundbound traffic
+## the bigger the number, the more people going downtown
+m_diff <- lmer(diff ~ total * (weekday + (1|hour)), data = df)
+df$total_diff <- predict(m_diff, newdata=df, type="response")
+
+
+# Calculate leverage
+out <- influence(m, obs=TRUE)
+df$cooks_distance <- cooks.distance(out)
+
 
 openxlsx::write.xlsx(df, here::here("kids_on_bikes.xlsx"))
